@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# 🇨🇳 中国旅游规划助手 (China Travel Planner)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个智能、现代化的旅游行程规划 Web 应用，专为规划中国境内的旅行而设计。结合高德地图 API，提供从景点搜索、路线规划到行程分享的一站式体验。
 
-Currently, two official plugins are available:
+[在线演示 Demo](https://marchfantasy.github.io/travel-plan-web/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ 核心功能
 
-## React Compiler
+### 1. 🗺️ 沉浸式地图交互
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **高德地图集成**: 采用高德地图 2.0 JS API，提供精准的国内地理信息。
+- **3D 视图**: 默认开启 3D 视图，提供更立体的地图浏览体验。
+- **每日路线染色**: 不同天数的行程路线使用不同颜色（蓝、绿、橙、紫...）区分，直观展示每日活动范围。
+- **智能连线**: 自动连接行程中的景点，跨天行程之间不显示连线，保持地图整洁。
 
-## Expanding the ESLint configuration
+### 2. 📅 智能行程规划
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **向导式创建**: 通过简单的几步设置（日期、时长、同行人员、偏好），快速生成行程框架。
+- **自动时间计算**:
+  - 根据景点类型自动估算游玩时长（5A 景区 3 小时，4A 2 小时，餐厅 1 小时等）。
+  - 自动计算景点之间的交通耗时（支持驾车和公交模式）。
+  - 拖拽调整顺序，所有后续时间自动重新计算。
+- **酒店智能逻辑**:
+  - 添加酒店后，自动将结束时间设为次日 9:00。
+  - 地图路线自动连接前一晚酒店与次日第一个景点，实现无缝衔接。
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 3. 🔍 多维搜索与周边推荐
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- **多类型搜索**: 支持搜索景点、美食（餐厅）、住宿（酒店）。
+- **周边搜**: 在行程列表中，鼠标悬停在任意景点上，即可一键搜索该地点周边的美食和酒店（默认 5km 范围）。
+- **智能去重**: 优化搜索结果，优先显示高质量的 POI 数据。
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 4. 📤 分享与导航
+
+- **一键分享**: 生成行程二维码和链接。
+- **高德导航**: 支持直接跳转高德地图 App，自动填入目的地和前 3 个途经点，一键开启驾车导航。
+
+## 🛠️ 技术栈
+
+- **框架**: [React 19](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **语言**: [TypeScript](https://www.typescriptlang.org/)
+- **样式**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **状态管理**: [Zustand](https://github.com/pmndrs/zustand)
+- **地图**: [AMap JS API](https://lbs.amap.com/) (@amap/amap-jsapi-loader)
+- **图标**: [Lucide React](https://lucide.dev/)
+- **工具**: date-fns, qrcode.react
+
+## 🚀 快速开始
+
+### 安装依赖
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 启动开发服务器
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+打开浏览器访问 `http://localhost:5173`。
+
+### 构建生产版本
+
+```bash
+npm run build
+```
+
+## 📦 部署
+
+本项目配置了 GitHub Actions，每次推送到 `main` 分支时会自动构建并部署到 GitHub Pages。
+
+## 📄 许可证
+
+MIT License
