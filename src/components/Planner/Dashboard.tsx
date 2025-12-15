@@ -17,9 +17,11 @@ import {
 	Bed,
 	Utensils,
 	MapPin,
+	Share2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import AMapLoader from '@amap/amap-jsapi-loader';
+import { QRCodeCanvas } from 'qrcode.react';
 import type { Attraction } from '../../types';
 
 export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -35,6 +37,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 		location: [number, number];
 		name: string;
 	} | null>(null);
+	const [showShare, setShowShare] = useState(false);
 
 	const doSearch = async (keyword?: string) => {
 		if (config.selectedCityIds.length === 0) return;
@@ -326,9 +329,18 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 			<div className="col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
 				<div className="p-4 border-b border-slate-100 bg-slate-50">
 					<h3 className="font-semibold text-slate-800">行程安排</h3>
-					<p className="text-xs text-slate-500 mt-1">
-						{format(config.startDate, 'yyyy-MM-dd')} 开始 · {config.duration} 天
-					</p>
+					<div className="flex items-center gap-2">
+						<p className="text-xs text-slate-500">
+							{format(config.startDate, 'yyyy-MM-dd')} 开始 · {config.duration} 天
+						</p>
+						<button
+							onClick={() => setShowShare(true)}
+							className="p-1 hover:bg-slate-200 rounded-full transition-colors ml-auto"
+							title="分享行程"
+						>
+							<Share2 className="w-4 h-4 text-slate-600" />
+						</button>
+					</div>
 				</div>
 				<div className="flex-1 overflow-y-auto p-4">
 					{items.length === 0 ? (
@@ -532,6 +544,60 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 					)}
 				</div>
 			</div>
+
+			{/* Share Modal */}
+			{showShare && (
+				<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+					<div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full">
+						<h3 className="text-lg font-bold text-slate-800 mb-4">分享行程</h3>
+						<div className="flex justify-center mb-4">
+							<QRCodeCanvas
+								value={`https://uri.amap.com/navigation?to=${
+									items.length > 0
+										? `${items[items.length - 1].location[0]},${
+												items[items.length - 1].location[1]
+										  },${items[items.length - 1].name}`
+										: ''
+								}&via=${items
+									.slice(0, Math.min(items.length - 1, 3))
+									.map((item) => `${item.location[0]},${item.location[1]},${item.name}`)
+									.join('|')}&mode=car&callnative=1`}
+								size={200}
+							/>
+						</div>
+						<p className="text-sm text-slate-500 text-center mb-4">
+							使用高德地图 App 扫码查看路线
+							<br />
+							(仅包含前3个途经点)
+						</p>
+						<div className="flex gap-2">
+							<button
+								onClick={() => setShowShare(false)}
+								className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200"
+							>
+								关闭
+							</button>
+							<a
+								href={`https://uri.amap.com/navigation?to=${
+									items.length > 0
+										? `${items[items.length - 1].location[0]},${
+												items[items.length - 1].location[1]
+										  },${items[items.length - 1].name}`
+										: ''
+								}&via=${items
+									.slice(0, Math.min(items.length - 1, 3))
+									.map((item) => `${item.location[0]},${item.location[1]},${item.name}`)
+									.join('|')}&mode=car&callnative=1`}
+								target="_blank"
+								rel="noreferrer"
+								className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center"
+							>
+								打开高德
+							</a>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };
