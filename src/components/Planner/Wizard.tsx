@@ -9,6 +9,7 @@ import {
 	User,
 	Baby,
 	Armchair,
+	Search,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { clsx } from 'clsx';
@@ -19,6 +20,7 @@ export const Wizard: React.FC<{ onComplete: () => void }> = ({
 	const { config, setConfig, clearItems } = useItineraryStore();
 	const [step, setStep] = useState(1);
 	const [selectedProvince, setSelectedProvince] = useState<string>('全部');
+	const [citySearch, setCitySearch] = useState('');
 
 	// Get unique provinces
 	const provinces = useMemo(() => {
@@ -28,9 +30,25 @@ export const Wizard: React.FC<{ onComplete: () => void }> = ({
 
 	// Filter cities
 	const filteredCities = useMemo(() => {
-		if (selectedProvince === '全部') return MOCK_CITIES;
-		return MOCK_CITIES.filter((c) => c.province === selectedProvince);
-	}, [selectedProvince]);
+		let result = MOCK_CITIES;
+
+		// Filter by province
+		if (selectedProvince !== '全部') {
+			result = result.filter((c) => c.province === selectedProvince);
+		}
+
+		// Filter by search keyword
+		if (citySearch.trim()) {
+			const keyword = citySearch.toLowerCase().trim();
+			result = result.filter(
+				(c) =>
+					c.name.toLowerCase().includes(keyword) ||
+					c.description.toLowerCase().includes(keyword)
+			);
+		}
+
+		return result;
+	}, [selectedProvince, citySearch]);
 
 	const handleNext = () => {
 		if (step < 4) {
@@ -207,6 +225,18 @@ export const Wizard: React.FC<{ onComplete: () => void }> = ({
 					{step === 4 && (
 						<div className="space-y-6">
 							<h3 className="text-xl font-semibold text-slate-800">您想去哪里？</h3>
+
+							{/* City Search */}
+							<div className="relative">
+								<input
+									type="text"
+									placeholder="搜索城市..."
+									value={citySearch}
+									onChange={(e) => setCitySearch(e.target.value)}
+									className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
+								/>
+								<Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+							</div>
 
 							{/* Province Filter */}
 							<div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">

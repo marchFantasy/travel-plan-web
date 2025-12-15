@@ -47,7 +47,12 @@ export const useItineraryStore = create<ItineraryState>((set, get) => ({
 
 		const newItem: ItineraryItem = {
 			id: crypto.randomUUID(),
-			type: 'attraction',
+			type:
+				attraction.category === 'hotel'
+					? 'hotel'
+					: attraction.category === 'restaurant'
+					? 'meal'
+					: 'attraction',
 			referenceId: attraction.id,
 			name: attraction.name,
 			// Initial times will be calculated

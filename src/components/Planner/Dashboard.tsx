@@ -14,6 +14,9 @@ import {
 	Minus,
 	Moon,
 	Search,
+	Bed,
+	Utensils,
+	MapPin,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import AMapLoader from '@amap/amap-jsapi-loader';
@@ -25,8 +28,11 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 	const [attractions, setAttractions] = useState<Attraction[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [searchKeyword, setSearchKeyword] = useState('');
+	const [searchCategory, setSearchCategory] = useState<
+		'attraction' | 'hotel' | 'restaurant'
+	>('attraction');
 
-	const doSearch = async (keyword: string = '5A景区') => {
+	const doSearch = async (keyword?: string) => {
 		if (config.selectedCityIds.length === 0) return;
 
 		setLoading(true);
@@ -42,16 +48,30 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 			);
 			const allAttractions: Attraction[] = [];
 
+			// Determine AMap type based on category
+			let type = '风景名胜';
+			if (searchCategory === 'hotel') type = '住宿服务';
+			if (searchCategory === 'restaurant') type = '餐饮服务';
+
+			// Default keyword if empty
+			const query =
+				keyword ||
+				(searchCategory === 'attraction'
+					? '5A景区'
+					: searchCategory === 'hotel'
+					? '酒店'
+					: '美食');
+
 			for (const city of selectedCities) {
 				const placeSearch = new AMap.PlaceSearch({
 					city: city.name,
-					type: '风景名胜', // Search for scenic spots
+					type: type,
 					pageSize: 20,
 					extensions: 'all',
 				});
 
 				await new Promise<void>((resolve) => {
-					placeSearch.search(keyword, (status: string, result: any) => {
+					placeSearch.search(query, (status: string, result: any) => {
 						if (status === 'complete' && result.poiList) {
 							const pois = result.poiList.pois;
 							pois.forEach((poi: any) => {
@@ -73,6 +93,16 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 										level = poi.type.split(';')[0];
 									}
 
+									// Determine default duration
+									let duration = 90;
+									if (searchCategory === 'attraction') {
+										duration = level === '5A' ? 180 : level === '4A' ? 120 : 90;
+									} else if (searchCategory === 'restaurant') {
+										duration = 60;
+									} else if (searchCategory === 'hotel') {
+										duration = 0; // Usually just a stop or check-in
+									}
+
 									allAttractions.push({
 										id: poi.id,
 										name: poi.name,
@@ -82,7 +112,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 											poi.biz_ext && poi.biz_ext.rating
 												? parseFloat(poi.biz_ext.rating)
 												: 4.5,
-										suggestedDuration: level === '5A' ? 180 : level === '4A' ? 120 : 90,
+										suggestedDuration: duration,
 										location: [poi.location.lng, poi.location.lat],
 										tags: poi.type.split(';').slice(0, 3),
 										price:
@@ -91,6 +121,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 											poi.photos && poi.photos.length > 0
 												? poi.photos[0].url
 												: 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=800&q=80',
+										category: searchCategory,
 									});
 								}
 							});
@@ -109,7 +140,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
 	useEffect(() => {
 		doSearch();
-	}, [config.selectedCityIds]);
+	}, [config.selectedCityIds, searchCategory]);
 
 	return (
 		<div className="grid grid-cols-12 gap-6 h-[calc(100vh-8rem)]">
@@ -132,21 +163,62 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 						</div>
 					</div>
 
+					{/* Category Tabs */}
+					<div className="flex gap-2 mb-3">
+						<button
+							onClick={() => setSearchCategory('attraction')}
+							className={`flex-1 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-1 transition-colors ${
+								searchCategory === 'attraction'
+									? 'bg-blue-100 text-blue-700'
+									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+							}`}
+						>
+							<MapPin className="w-3.5 h-3.5" />
+							景点
+						</button>
+						<button
+							onClick={() => setSearchCategory('restaurant')}
+							className={`flex-1 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-1 transition-colors ${
+								searchCategory === 'restaurant'
+									? 'bg-orange-100 text-orange-700'
+									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+							}`}
+						>
+							<Utensils className="w-3.5 h-3.5" />
+							美食
+						</button>
+						<button
+							onClick={() => setSearchCategory('hotel')}
+							className={`flex-1 py-1.5 text-sm font-medium rounded-lg flex items-center justify-center gap-1 transition-colors ${
+								searchCategory === 'hotel'
+									? 'bg-indigo-100 text-indigo-700'
+									: 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+							}`}
+						>
+							<Bed className="w-3.5 h-3.5" />
+							住宿
+						</button>
+					</div>
+
 					{/* Search Box */}
 					<div className="relative">
 						<input
 							type="text"
-							placeholder="搜索景点..."
+							placeholder={
+								searchCategory === 'attraction'
+									? '搜索景点...'
+									: searchCategory === 'hotel'
+									? '搜索酒店...'
+									: '搜索美食...'
+							}
 							value={searchKeyword}
 							onChange={(e) => setSearchKeyword(e.target.value)}
-							onKeyDown={(e) =>
-								e.key === 'Enter' && doSearch(searchKeyword || '风景名胜')
-							}
+							onKeyDown={(e) => e.key === 'Enter' && doSearch(searchKeyword)}
 							className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
 						/>
 						<Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
 						<button
-							onClick={() => doSearch(searchKeyword || '风景名胜')}
+							onClick={() => doSearch(searchKeyword)}
 							className="absolute right-1 top-1 bottom-1 px-3 bg-blue-50 text-blue-600 rounded text-xs font-medium hover:bg-blue-100"
 						>
 							搜索
@@ -245,46 +317,78 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 											</div>
 										)}
 										{/* Dot */}
-										<div className="absolute left-[11px] top-3 w-3 h-3 rounded-full bg-blue-600 border-2 border-white ring-1 ring-blue-100" />
-										<div className="bg-slate-50 p-3 rounded-lg border border-slate-200 group-hover:border-blue-300 transition-colors">
+										{/* Dot */}
+										<div
+											className={`absolute left-[11px] top-3 w-3 h-3 rounded-full border-2 border-white ring-1 ${
+												item.type === 'hotel'
+													? 'bg-indigo-600 ring-indigo-100'
+													: item.type === 'meal'
+													? 'bg-orange-500 ring-orange-100'
+													: 'bg-blue-600 ring-blue-100'
+											}`}
+										/>
+										<div
+											className={`p-3 rounded-lg border transition-colors ${
+												item.type === 'hotel'
+													? 'bg-indigo-50 border-indigo-100 group-hover:border-indigo-300'
+													: item.type === 'meal'
+													? 'bg-orange-50 border-orange-100 group-hover:border-orange-300'
+													: 'bg-slate-50 border-slate-200 group-hover:border-blue-300'
+											}`}
+										>
 											<div className="flex justify-between items-start">
-												<h4 className="font-bold text-sm text-slate-800">{item.name}</h4>
-												<div className="flex items-center gap-2">
-													<span className="text-xs font-mono text-slate-500 bg-white px-1 rounded border border-slate-100">
-														{format(new Date(item.startTime), 'HH:mm')}
-													</span>
-													<div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-														<button
-															onClick={() => reorderItems(index, index - 1)}
-															disabled={index === 0}
-															className="p-0.5 hover:bg-slate-200 rounded disabled:opacity-30"
-														>
-															<ArrowUp className="w-3 h-3 text-slate-600" />
-														</button>
-														<button
-															onClick={() => reorderItems(index, index + 1)}
-															disabled={index === items.length - 1}
-															className="p-0.5 hover:bg-slate-200 rounded disabled:opacity-30"
-														>
-															<ArrowDown className="w-3 h-3 text-slate-600" />
-														</button>
-														<button
-															onClick={() => removeItem(item.id)}
-															className="p-0.5 hover:bg-red-100 rounded text-red-500"
-															title="删除"
-														>
-															<Trash2 className="w-3 h-3" />
-														</button>
-													</div>
+												<h4
+													className={`font-bold ${
+														item.type === 'hotel'
+															? 'text-indigo-900'
+															: item.type === 'meal'
+															? 'text-orange-900'
+															: 'text-slate-800'
+													}`}
+												>
+													{item.name}
+												</h4>
+												<div className="flex gap-1">
+													<button
+														onClick={() => reorderItems(index, index - 1)}
+														disabled={index === 0}
+														className="p-1 hover:bg-black/5 rounded disabled:opacity-30"
+													>
+														<ArrowUp className="w-3 h-3 text-slate-500" />
+													</button>
+													<button
+														onClick={() => reorderItems(index, index + 1)}
+														disabled={index === items.length - 1}
+														className="p-1 hover:bg-black/5 rounded disabled:opacity-30"
+													>
+														<ArrowDown className="w-3 h-3 text-slate-500" />
+													</button>
+													<button
+														onClick={() => removeItem(item.id)}
+														className="p-1 hover:bg-red-100 rounded text-slate-400 hover:text-red-500"
+													>
+														<Trash2 className="w-3 h-3" />
+													</button>
 												</div>
 											</div>
-											<div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-												<Clock className="w-3 h-3" />
-												{format(new Date(item.endTime), 'HH:mm')} 结束
+											<div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+												<div className="flex items-center gap-1">
+													<Clock className="w-3 h-3" />
+													{format(new Date(item.startTime), 'HH:mm')} 开始
+												</div>
+												<div className="flex items-center gap-1">
+													<Clock className="w-3 h-3" />
+													{format(new Date(item.endTime), 'HH:mm')} 结束
+												</div>
 											</div>
 											<div className="mt-2 flex items-center gap-2">
 												<span className="text-xs text-slate-400">
-													游玩:{' '}
+													{item.type === 'hotel'
+														? '休息/住宿'
+														: item.type === 'meal'
+														? '用餐'
+														: '游玩'}
+													:{' '}
 													{Math.round(
 														(item.endTime.getTime() - item.startTime.getTime()) / 60000
 													)}

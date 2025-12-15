@@ -10,13 +10,23 @@ declare global {
 	}
 }
 
+// Define colors for different days
+const DAY_COLORS = [
+	'#2563eb', // Blue
+	'#16a34a', // Green
+	'#d97706', // Orange
+	'#9333ea', // Purple
+	'#dc2626', // Red
+	'#0891b2', // Cyan
+	'#db2777', // Pink
+];
+
 export const ChinaMap: React.FC = () => {
 	const { items, config } = useItineraryStore();
 	const mapRef = useRef<any>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const markersRef = useRef<any[]>([]);
 	const polylineRef = useRef<any>(null);
-	const drivingRef = useRef<any>(null);
 
 	useEffect(() => {
 		let mapInstance: any = null;
@@ -60,26 +70,53 @@ export const ChinaMap: React.FC = () => {
 
 		// Clear existing
 		map.remove(markersRef.current);
-		if (polylineRef.current) map.remove(polylineRef.current);
-		if (drivingRef.current) {
-			drivingRef.current.clear();
-			drivingRef.current = null;
+		if (polylineRef.current) {
+			if (Array.isArray(polylineRef.current)) {
+				map.remove(polylineRef.current);
+			} else {
+				map.remove(polylineRef.current);
+			}
 		}
+		// Clear driving instances if any (we don't store them all, but we should clear polylines)
+		polylineRef.current = [];
 		markersRef.current = [];
 
-		// Add Markers
-		const path: any[] = [];
+		// Group items by day
+		const dayGroups: { [key: string]: typeof items } = {};
 		items.forEach((item) => {
+			const dateStr = new Date(item.startTime).toDateString();
+			if (!dayGroups[dateStr]) {
+				dayGroups[dateStr] = [];
+			}
+			dayGroups[dateStr].push(item);
+		});
+
+		const days = Object.keys(dayGroups).sort(
+			(a, b) => new Date(a).getTime() - new Date(b).getTime()
+		);
+
+		// Add Markers
+		items.forEach((item, index) => {
 			const position = new AMap.LngLat(item.location[0], item.location[1]);
-			path.push(position);
+
+			// Find which day index this item belongs to for color
+			const dateStr = new Date(item.startTime).toDateString();
+			const dayIndex = days.indexOf(dateStr);
+			const color = DAY_COLORS[dayIndex % DAY_COLORS.length];
 
 			const marker = new AMap.Marker({
 				position: position,
 				title: item.name,
-				label: {
-					content: `<div class="bg-white px-2 py-1 rounded shadow text-xs font-bold">${item.name}</div>`,
-					direction: 'top',
-				},
+				content: `
+					<div class="flex flex-col items-center">
+						<div class="bg-white px-2 py-1 rounded shadow text-xs font-bold mb-1 whitespace-nowrap border-l-4" style="border-left-color: ${color}">
+							${item.name}
+						</div>
+						<div class="w-3 h-3 rounded-full border-2 border-white shadow" style="background-color: ${color}"></div>
+					</div>
+				`,
+				offset: new AMap.Pixel(-0, -20),
+				zIndex: 100 + index,
 			});
 
 			marker.on('click', () => {
@@ -93,6 +130,7 @@ export const ChinaMap: React.FC = () => {
 																	minute: '2-digit',
 																})}
               </p>
+			  <p class="text-xs text-gray-400 mt-1">Day ${dayIndex + 1}</p>
             </div>
           `,
 					offset: new AMap.Pixel(0, -30),
@@ -105,53 +143,84 @@ export const ChinaMap: React.FC = () => {
 
 		map.add(markersRef.current);
 
-		// Draw Route
-		if (path.length > 1) {
-			if (config.transport === 'driving') {
-				// Use AMap.Driving
-				// Start: path[0]
-				// End: path[path.length - 1]
-				// Waypoints: path.slice(1, -1)
+		// Draw Routes per Day
+		const drawDayRoutes = async () => {
+			for (let i = 0; i < days.length; i++) {
+				const dayItems = dayGroups[days[i]];
+				if (dayItems.length < 2) continue;
 
-				const driving = new AMap.Driving({
-					map: map,
-					hideMarkers: true, // We use our own markers
-					showTraffic: false,
-				});
-				drivingRef.current = driving;
-
-				const start = path[0];
-				const end = path[path.length - 1];
-				const waypoints = path.slice(1, -1);
-
-				driving.search(
-					start,
-					end,
-					{ waypoints: waypoints },
-					(status: string, result: any) => {
-						if (status === 'complete') {
-							// console.log('Driving route found');
-						} else {
-							console.error('Driving route failed', result);
-							// Fallback to polyline if needed?
-						}
-					}
+				const color = DAY_COLORS[i % DAY_COLORS.length];
+				const path = dayItems.map(
+					(item) => new AMap.LngLat(item.location[0], item.location[1])
 				);
-			} else {
-				// Use Polyline for Public Transport (dashed)
-				polylineRef.current = new AMap.Polyline({
-					path: path,
-					strokeColor: '#2563eb', // blue-600
-					strokeWeight: 6,
-					strokeOpacity: 0.8,
-					strokeStyle: 'dashed',
-					lineJoin: 'round',
-					lineCap: 'round',
-					showDir: true,
-				});
-				map.add(polylineRef.current);
+
+				if (config.transport === 'driving') {
+					// Use Driving API to get path geometry
+					const driving = new AMap.Driving({
+						policy: AMap.DrivingPolicy.LEAST_TIME,
+					});
+
+					const start = path[0];
+					const end = path[path.length - 1];
+					const waypoints = path.slice(1, -1);
+
+					// Wrap search in promise
+					try {
+						await new Promise<void>((resolve) => {
+							driving.search(
+								start,
+								end,
+								{ waypoints: waypoints },
+								(status: string, result: any) => {
+									if (
+										status === 'complete' &&
+										result.routes &&
+										result.routes.length > 0
+									) {
+										const routePath: any[] = [];
+										result.routes[0].steps.forEach((step: any) => {
+											routePath.push(...step.path);
+										});
+
+										const polyline = new AMap.Polyline({
+											path: routePath,
+											strokeColor: color,
+											strokeWeight: 6,
+											strokeOpacity: 0.8,
+											lineJoin: 'round',
+											lineCap: 'round',
+											zIndex: 50,
+										});
+										map.add(polyline);
+										polylineRef.current.push(polyline);
+									}
+									resolve();
+								}
+							);
+						});
+					} catch (e) {
+						console.error('Driving route error', e);
+					}
+				} else {
+					// Public transport - simple dashed line
+					const polyline = new AMap.Polyline({
+						path: path,
+						strokeColor: color,
+						strokeWeight: 6,
+						strokeOpacity: 0.8,
+						strokeStyle: 'dashed',
+						lineJoin: 'round',
+						lineCap: 'round',
+						showDir: true,
+						zIndex: 50,
+					});
+					map.add(polyline);
+					polylineRef.current.push(polyline);
+				}
 			}
-		}
+		};
+
+		drawDayRoutes();
 
 		// Fit view
 		if (markersRef.current.length > 0) {

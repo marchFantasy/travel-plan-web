@@ -17,6 +17,7 @@ export interface Attraction {
 	tags: string[];
 	price: number;
 	imageUrl: string;
+	category?: 'attraction' | 'hotel' | 'restaurant';
 }
 
 export type TransportType = 'driving' | 'public';

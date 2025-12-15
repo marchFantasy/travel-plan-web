@@ -101,6 +101,74 @@ export const MOCK_CITIES: City[] = [
 		center: [118.0894, 24.4798],
 		description: '海上花园，鼓浪屿。',
 	},
+	// Anhui
+	{
+		id: 'hf',
+		name: '合肥',
+		province: '安徽',
+		center: [117.2272, 31.8206],
+		description: '大湖名城，创新高地。',
+	},
+	{
+		id: 'hs',
+		name: '黄山',
+		province: '安徽',
+		center: [118.3375, 29.7147],
+		description: '天下第一奇山，徽州文化。',
+	},
+	// Xinjiang
+	{
+		id: 'wlmq',
+		name: '乌鲁木齐',
+		province: '新疆',
+		center: [87.6168, 43.8256],
+		description: '亚心之都，西域风情。',
+	},
+	{
+		id: 'ks',
+		name: '喀什',
+		province: '新疆',
+		center: [75.9898, 39.4704],
+		description: '丝路明珠，古城风貌。',
+	},
+	// Tibet
+	{
+		id: 'ls',
+		name: '拉萨',
+		province: '西藏',
+		center: [91.1409, 29.6456],
+		description: '日光城，布达拉宫，信仰之地。',
+	},
+	{
+		id: 'lz',
+		name: '林芝',
+		province: '西藏',
+		center: [94.3615, 29.6491],
+		description: '西藏江南，桃花源，雅鲁藏布大峡谷。',
+	},
+	// Hunan
+	{
+		id: 'cs',
+		name: '长沙',
+		province: '湖南',
+		center: [112.9388, 28.2282],
+		description: '星城，娱乐之都，美食圣地。',
+	},
+	{
+		id: 'zjj',
+		name: '张家界',
+		province: '湖南',
+		center: [110.4792, 29.1174],
+		description: '奇峰三千，阿凡达取景地。',
+	},
+	// Guangxi
+	{
+		id: 'gl',
+		name: '桂林',
+		province: '广西',
+		center: [110.2902, 25.2736],
+		description: '山水甲天下，阳朔西街。',
+	},
 ];
 
 export const MOCK_ATTRACTIONS: Attraction[] = [
