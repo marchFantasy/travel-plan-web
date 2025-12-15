@@ -31,6 +31,10 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 	const [searchCategory, setSearchCategory] = useState<
 		'attraction' | 'hotel' | 'restaurant'
 	>('attraction');
+	const [searchCenter, setSearchCenter] = useState<{
+		location: [number, number];
+		name: string;
+	} | null>(null);
 
 	const doSearch = async (keyword?: string) => {
 		if (config.selectedCityIds.length === 0) return;
@@ -62,73 +66,48 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 					? '酒店'
 					: '美食');
 
-			for (const city of selectedCities) {
+			if (searchCenter) {
+				// Search nearby specific location
 				const placeSearch = new AMap.PlaceSearch({
-					city: city.name,
 					type: type,
 					pageSize: 20,
 					extensions: 'all',
 				});
 
 				await new Promise<void>((resolve) => {
-					placeSearch.search(query, (status: string, result: any) => {
-						if (status === 'complete' && result.poiList) {
-							const pois = result.poiList.pois;
-							pois.forEach((poi: any) => {
-								// Avoid duplicates by ID or Name
-								if (
-									!allAttractions.find((a) => a.id === poi.id || a.name === poi.name)
-								) {
-									// Determine level or fallback to type
-									let level = '普通';
-									if (poi.name.includes('5A') || (poi.tag && poi.tag.includes('5A'))) {
-										level = '5A';
-									} else if (
-										poi.name.includes('4A') ||
-										(poi.tag && poi.tag.includes('4A'))
-									) {
-										level = '4A';
-									} else if (poi.type) {
-										// Use the first part of type as tag/level
-										level = poi.type.split(';')[0];
-									}
-
-									// Determine default duration
-									let duration = 90;
-									if (searchCategory === 'attraction') {
-										duration = level === '5A' ? 180 : level === '4A' ? 120 : 90;
-									} else if (searchCategory === 'restaurant') {
-										duration = 60;
-									} else if (searchCategory === 'hotel') {
-										duration = 0; // Usually just a stop or check-in
-									}
-
-									allAttractions.push({
-										id: poi.id,
-										name: poi.name,
-										cityId: city.id,
-										level: level,
-										rating:
-											poi.biz_ext && poi.biz_ext.rating
-												? parseFloat(poi.biz_ext.rating)
-												: 4.5,
-										suggestedDuration: duration,
-										location: [poi.location.lng, poi.location.lat],
-										tags: poi.type.split(';').slice(0, 3),
-										price:
-											poi.biz_ext && poi.biz_ext.cost ? parseFloat(poi.biz_ext.cost) : 0,
-										imageUrl:
-											poi.photos && poi.photos.length > 0
-												? poi.photos[0].url
-												: 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=800&q=80',
-										category: searchCategory,
-									});
-								}
-							});
+					placeSearch.searchNearBy(
+						query,
+						searchCenter.location,
+						5000, // 5km radius
+						(status: string, result: any) => {
+							if (status === 'complete' && result.poiList) {
+								const pois = result.poiList.pois;
+								processPois(pois, allAttractions, selectedCities[0]); // Use first city as fallback for ID
+							}
+							resolve();
 						}
-						resolve();
-					});
+					);
 				});
+			} else {
+				// Search in cities
+				for (const city of selectedCities) {
+					const placeSearch = new AMap.PlaceSearch({
+						city: city.name,
+						type: type,
+						pageSize: 20,
+						extensions: 'all',
+					});
+
+					await new Promise<void>((resolve) => {
+						placeSearch.search(query, (status: string, result: any) => {
+							if (status === 'complete' && result.poiList) {
+								const pois = result.poiList.pois;
+								processPois(pois, allAttractions, city);
+							}
+							resolve();
+						});
+					});
+				}
 			}
 			setAttractions(allAttractions);
 		} catch (e) {
@@ -138,9 +117,55 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 		}
 	};
 
+	const processPois = (pois: any[], allAttractions: Attraction[], city: any) => {
+		pois.forEach((poi: any) => {
+			// Avoid duplicates by ID or Name
+			if (!allAttractions.find((a) => a.id === poi.id || a.name === poi.name)) {
+				// Determine level or fallback to type
+				let level = '普通';
+				if (poi.name.includes('5A') || (poi.tag && poi.tag.includes('5A'))) {
+					level = '5A';
+				} else if (poi.name.includes('4A') || (poi.tag && poi.tag.includes('4A'))) {
+					level = '4A';
+				} else if (poi.type) {
+					// Use the first part of type as tag/level
+					level = poi.type.split(';')[0];
+				}
+
+				// Determine default duration
+				let duration = 90;
+				if (searchCategory === 'attraction') {
+					duration = level === '5A' ? 180 : level === '4A' ? 120 : 90;
+				} else if (searchCategory === 'restaurant') {
+					duration = 60;
+				} else if (searchCategory === 'hotel') {
+					duration = 0; // Usually just a stop or check-in
+				}
+
+				allAttractions.push({
+					id: poi.id,
+					name: poi.name,
+					cityId: city.id,
+					level: level,
+					rating:
+						poi.biz_ext && poi.biz_ext.rating ? parseFloat(poi.biz_ext.rating) : 4.5,
+					suggestedDuration: duration,
+					location: [poi.location.lng, poi.location.lat],
+					tags: poi.type.split(';').slice(0, 3),
+					price: poi.biz_ext && poi.biz_ext.cost ? parseFloat(poi.biz_ext.cost) : 0,
+					imageUrl:
+						poi.photos && poi.photos.length > 0
+							? poi.photos[0].url
+							: 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=800&q=80',
+					category: searchCategory,
+				});
+			}
+		});
+	};
+
 	useEffect(() => {
 		doSearch();
-	}, [config.selectedCityIds, searchCategory]);
+	}, [config.selectedCityIds, searchCategory, searchCenter]);
 
 	return (
 		<div className="grid grid-cols-12 gap-6 h-[calc(100vh-8rem)]">
@@ -199,6 +224,22 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 							住宿
 						</button>
 					</div>
+
+					{/* Search Center Indicator */}
+					{searchCenter && (
+						<div className="mb-3 flex items-center justify-between bg-blue-50 px-3 py-2 rounded-lg text-xs text-blue-700 border border-blue-100">
+							<div className="flex items-center gap-1 truncate">
+								<MapPin className="w-3 h-3" />
+								<span className="truncate">附近: {searchCenter.name}</span>
+							</div>
+							<button
+								onClick={() => setSearchCenter(null)}
+								className="text-blue-500 hover:text-blue-700 whitespace-nowrap ml-2"
+							>
+								清除
+							</button>
+						</div>
+					)}
 
 					{/* Search Box */}
 					<div className="relative">
@@ -439,9 +480,33 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 														title="从此开始新的一天"
 													>
 														<Moon className="w-3 h-3" />
-														{item.forceDayStart ? '已设为新的一天' : '设为新的一天'}
+														{item.forceDayStart ? '新的一天' : '分段'}
 													</button>
 												</div>
+											</div>
+
+											{/* Nearby Search Actions */}
+											<div className="mt-2 pt-2 border-t border-slate-100 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+												<button
+													onClick={() => {
+														setSearchCenter({ location: item.location, name: item.name });
+														setSearchCategory('restaurant');
+													}}
+													className="flex-1 py-1 bg-orange-50 text-orange-600 text-xs rounded hover:bg-orange-100 flex items-center justify-center gap-1"
+												>
+													<Utensils className="w-3 h-3" />
+													搜美食
+												</button>
+												<button
+													onClick={() => {
+														setSearchCenter({ location: item.location, name: item.name });
+														setSearchCategory('hotel');
+													}}
+													className="flex-1 py-1 bg-indigo-50 text-indigo-600 text-xs rounded hover:bg-indigo-100 flex items-center justify-center gap-1"
+												>
+													<Bed className="w-3 h-3" />
+													搜酒店
+												</button>
 											</div>
 										</div>
 

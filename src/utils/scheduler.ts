@@ -86,9 +86,20 @@ export function recalculateItinerary(
 		// We should probably add 'duration' to ItineraryItem to make this easier,
 		// or we assume the difference between original start/end is the intended duration.
 
-		const originalDuration =
-			(item.endTime.getTime() - item.startTime.getTime()) / (1000 * 60);
-		const duration = originalDuration > 0 ? originalDuration : 120; // Default 2 hours
+		let duration = 0;
+		if (item.type === 'hotel') {
+			// Hotel ends at 9:00 AM next day (or same day if checked in early morning)
+			const targetEnd = new Date(item.startTime);
+			targetEnd.setHours(9, 0, 0, 0);
+			if (targetEnd <= item.startTime) {
+				targetEnd.setDate(targetEnd.getDate() + 1);
+			}
+			duration = (targetEnd.getTime() - item.startTime.getTime()) / (1000 * 60);
+		} else {
+			const originalDuration =
+				(item.endTime.getTime() - item.startTime.getTime()) / (1000 * 60);
+			duration = originalDuration > 0 ? originalDuration : 120; // Default 2 hours
+		}
 
 		// Set end time
 		item.endTime = addMinutes(item.startTime, duration);

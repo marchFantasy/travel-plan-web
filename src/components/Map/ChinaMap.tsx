@@ -147,12 +147,24 @@ export const ChinaMap: React.FC = () => {
 		const drawDayRoutes = async () => {
 			for (let i = 0; i < days.length; i++) {
 				const dayItems = dayGroups[days[i]];
-				if (dayItems.length < 2) continue;
 
 				const color = DAY_COLORS[i % DAY_COLORS.length];
 				const path = dayItems.map(
 					(item) => new AMap.LngLat(item.location[0], item.location[1])
 				);
+
+				// Check previous day for hotel
+				if (i > 0) {
+					const prevDayItems = dayGroups[days[i - 1]];
+					const lastPrevItem = prevDayItems[prevDayItems.length - 1];
+					if (lastPrevItem && lastPrevItem.type === 'hotel') {
+						path.unshift(
+							new AMap.LngLat(lastPrevItem.location[0], lastPrevItem.location[1])
+						);
+					}
+				}
+
+				if (path.length < 2) continue;
 
 				if (config.transport === 'driving') {
 					// Use Driving API to get path geometry
