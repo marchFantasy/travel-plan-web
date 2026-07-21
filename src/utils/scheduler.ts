@@ -65,7 +65,7 @@ export function recalculateItinerary(
 				travelTime = Math.ceil((distance / speed) * 60);
 			}
 
-			let checkInTime = addMinutes(currentTime, travelTime);
+			const checkInTime = addMinutes(currentTime, travelTime);
 			if (checkInTime.getHours() < 20 && checkInTime.getHours() >= 6) {
 				// Default evening check-in time (20:00)
 				checkInTime.setHours(20, 0, 0, 0);
@@ -107,6 +107,7 @@ export function recalculateItinerary(
 			const prevEnd = new Date(item.endTime).getTime();
 			const originalDuration = (prevEnd - prevStart) / (1000 * 60);
 
+			// @ts-expect-error Property suggestedDuration does not exist on type ItineraryItem
 			const defaultDuration = item.type === 'meal' ? 60 : (item.suggestedDuration || 120);
 			const duration = (originalDuration > 0 && !isNaN(originalDuration)) ? originalDuration : defaultDuration;
 

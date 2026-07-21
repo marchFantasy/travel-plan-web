@@ -29,6 +29,22 @@ import type { Attraction } from '../../types';
 import { ShareModal } from './ShareModal';
 import { PoiConfirmModal } from './PoiConfirmModal';
 
+interface AMapPoiItem {
+	id: string;
+	name: string;
+	type?: string;
+	tag?: string;
+	location: { lng: number; lat: number };
+	biz_ext?: { rating?: string; cost?: string };
+	photos?: Array<{ url: string }>;
+}
+
+interface AMapSearchResult {
+	poiList?: {
+		pois: AMapPoiItem[];
+	};
+}
+
 const PAGE_SIZE = 10;
 
 export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -98,7 +114,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 						query,
 						searchCenter.location,
 						5000, // 5km radius
-						(status: string, result: any) => {
+						(status: string, result: AMapSearchResult) => {
 							if (status === 'complete' && result.poiList) {
 								const pois = result.poiList.pois;
 								processPois(pois, allAttractions, selectedCities[0]); // Use first city as fallback for ID
@@ -118,7 +134,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 					});
 
 					await new Promise<void>((resolve) => {
-						placeSearch.search(query, (status: string, result: any) => {
+						placeSearch.search(query, (status: string, result: AMapSearchResult) => {
 							if (status === 'complete' && result.poiList) {
 								const pois = result.poiList.pois;
 								processPois(pois, allAttractions, city);
@@ -138,11 +154,11 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 	};
 
 	const processPois = (
-		pois: any[],
+		pois: AMapPoiItem[],
 		allAttractions: Attraction[],
-		city: any,
+		city: (typeof MOCK_CITIES)[0],
 	) => {
-		pois.forEach((poi: any) => {
+		pois.forEach((poi) => {
 			// Avoid duplicates by ID or Name
 			if (!allAttractions.find((a) => a.id === poi.id || a.name === poi.name)) {
 				// Determine level or fallback to type
@@ -180,7 +196,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 							: 4.5,
 					suggestedDuration: duration,
 					location: [poi.location.lng, poi.location.lat],
-					tags: poi.type.split(';').slice(0, 3),
+					tags: poi.type ? poi.type.split(';').slice(0, 3) : ['景点'],
 					price:
 						poi.biz_ext && poi.biz_ext.cost ? parseFloat(poi.biz_ext.cost) : 0,
 					imageUrl:
@@ -195,6 +211,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
 	useEffect(() => {
 		doSearch();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [config.selectedCityIds, searchCategory, searchCenter]);
 
 	const totalPages = Math.max(1, Math.ceil(attractions.length / PAGE_SIZE));

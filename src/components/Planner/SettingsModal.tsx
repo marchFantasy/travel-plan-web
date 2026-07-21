@@ -27,7 +27,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
 	const { language, theme, preferences, setLanguage, setTheme, setPreferences } =
 		useSettingsStore();
-	const { config, setConfig } = useItineraryStore();
+	const { setConfig } = useItineraryStore();
 
 	const t = TRANSLATIONS[language];
 	const isDark = theme === 'dark';

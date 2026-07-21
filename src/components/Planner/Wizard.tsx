@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { useItineraryStore } from '../../store/useItineraryStore';
 import { MOCK_CITIES } from '../../data/mockData';
 import {
-	MapPin,
 	Car,
 	Bus,
 	ArrowRight,

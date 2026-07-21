@@ -9,12 +9,15 @@ import type { Attraction } from '../../types';
 // Define window.AMap type
 declare global {
 	interface Window {
+		/* eslint-disable @typescript-eslint/no-explicit-any */
 		AMap: any;
 		_AMapSecurityConfig: any;
+		/* eslint-enable @typescript-eslint/no-explicit-any */
 	}
 }
 
 // Define colors for different days
+// eslint-disable-next-line react-refresh/only-export-components
 export const DAY_COLORS = [
 	'#2563eb', // Blue
 	'#16a34a', // Green
@@ -38,13 +41,16 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 }) => {
 	const { items, config } = useItineraryStore();
 	const { theme } = useSettingsStore();
+	/* eslint-disable @typescript-eslint/no-explicit-any */
 	const mapRef = useRef<any>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const markersRef = useRef<any[]>([]);
 	const poiMarkersRef = useRef<any[]>([]);
 	const polylineRef = useRef<any>(null);
+	/* eslint-enable @typescript-eslint/no-explicit-any */
 
 	useEffect(() => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let mapInstance: any = null;
 
 		AMapLoader.load({
@@ -77,6 +83,7 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 				mapInstance.destroy();
 			}
 		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	// Update map style when theme changes
@@ -270,6 +277,7 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 								start,
 								end,
 								{ waypoints: waypoints },
+								/* eslint-disable @typescript-eslint/no-explicit-any */
 								(status: string, result: any) => {
 									if (
 										status === 'complete' &&
@@ -280,6 +288,7 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 										result.routes[0].steps.forEach((step: any) => {
 											routePath.push(...step.path);
 										});
+										/* eslint-enable @typescript-eslint/no-explicit-any */
 
 										const polyline = new AMap.Polyline({
 											path: routePath,
