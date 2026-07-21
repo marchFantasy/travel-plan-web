@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useItineraryStore } from '../../store/useItineraryStore';
 import { MOCK_CITIES } from '../../data/mockData';
-import { ChinaMap } from '../Map/ChinaMap';
+import { ChinaMap, DAY_COLORS } from '../Map/ChinaMap';
 import {
 	Plus,
 	Star,
@@ -21,12 +21,19 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import AMapLoader from '@amap/amap-jsapi-loader';
-import { QRCodeCanvas } from 'qrcode.react';
 import type { Attraction } from '../../types';
+import { ShareModal } from './ShareModal';
 
 export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-	const { config, items, addItem, reorderItems, removeItem, updateItem } =
-		useItineraryStore();
+	const {
+		config,
+		items,
+		addItem,
+		reorderItems,
+		removeItem,
+		updateItem,
+		clearItems,
+	} = useItineraryStore();
 	const [attractions, setAttractions] = useState<Attraction[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [searchKeyword, setSearchKeyword] = useState('');
@@ -51,7 +58,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 			});
 
 			const selectedCities = MOCK_CITIES.filter((c) =>
-				config.selectedCityIds.includes(c.id)
+				config.selectedCityIds.includes(c.id),
 			);
 			const allAttractions: Attraction[] = [];
 
@@ -64,10 +71,10 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 			const query =
 				keyword ||
 				(searchCategory === 'attraction'
-					? '5A景区'
+					? '景区'
 					: searchCategory === 'hotel'
-					? '酒店'
-					: '美食');
+						? '酒店'
+						: '美食');
 
 			if (searchCenter) {
 				// Search nearby specific location
@@ -88,7 +95,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 								processPois(pois, allAttractions, selectedCities[0]); // Use first city as fallback for ID
 							}
 							resolve();
-						}
+						},
 					);
 				});
 			} else {
@@ -120,7 +127,11 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 		}
 	};
 
-	const processPois = (pois: any[], allAttractions: Attraction[], city: any) => {
+	const processPois = (
+		pois: any[],
+		allAttractions: Attraction[],
+		city: any,
+	) => {
 		pois.forEach((poi: any) => {
 			// Avoid duplicates by ID or Name
 			if (!allAttractions.find((a) => a.id === poi.id || a.name === poi.name)) {
@@ -128,7 +139,10 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 				let level = '普通';
 				if (poi.name.includes('5A') || (poi.tag && poi.tag.includes('5A'))) {
 					level = '5A';
-				} else if (poi.name.includes('4A') || (poi.tag && poi.tag.includes('4A'))) {
+				} else if (
+					poi.name.includes('4A') ||
+					(poi.tag && poi.tag.includes('4A'))
+				) {
 					level = '4A';
 				} else if (poi.type) {
 					// Use the first part of type as tag/level
@@ -151,11 +165,14 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 					cityId: city.id,
 					level: level,
 					rating:
-						poi.biz_ext && poi.biz_ext.rating ? parseFloat(poi.biz_ext.rating) : 4.5,
+						poi.biz_ext && poi.biz_ext.rating
+							? parseFloat(poi.biz_ext.rating)
+							: 4.5,
 					suggestedDuration: duration,
 					location: [poi.location.lng, poi.location.lat],
 					tags: poi.type.split(';').slice(0, 3),
-					price: poi.biz_ext && poi.biz_ext.cost ? parseFloat(poi.biz_ext.cost) : 0,
+					price:
+						poi.biz_ext && poi.biz_ext.cost ? parseFloat(poi.biz_ext.cost) : 0,
 					imageUrl:
 						poi.photos && poi.photos.length > 0
 							? poi.photos[0].url
@@ -186,7 +203,9 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 						<div>
 							<h3 className="font-semibold text-slate-800">推荐景点</h3>
 							<p className="text-xs text-slate-500">
-								{loading ? '正在加载实时数据...' : `找到 ${attractions.length} 个景点`}
+								{loading
+									? '正在加载实时数据...'
+									: `找到 ${attractions.length} 个景点`}
 							</p>
 						</div>
 					</div>
@@ -252,8 +271,8 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 								searchCategory === 'attraction'
 									? '搜索景点...'
 									: searchCategory === 'hotel'
-									? '搜索酒店...'
-									: '搜索美食...'
+										? '搜索酒店...'
+										: '搜索美食...'
 							}
 							value={searchKeyword}
 							onChange={(e) => setSearchKeyword(e.target.value)}
@@ -294,7 +313,9 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 								<div className="p-3">
 									<div className="flex justify-between items-start mb-2">
 										<div>
-											<h4 className="font-bold text-slate-800">{attraction.name}</h4>
+											<h4 className="font-bold text-slate-800">
+												{attraction.name}
+											</h4>
 											<div className="flex gap-2 mt-1 flex-wrap">
 												<span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
 													{attraction.level}
@@ -327,20 +348,41 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
 			{/* Right Panel: Timeline */}
 			<div className="col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-				<div className="p-4 border-b border-slate-100 bg-slate-50">
-					<h3 className="font-semibold text-slate-800">行程安排</h3>
-					<div className="flex items-center gap-2">
-						<p className="text-xs text-slate-500">
-							{format(config.startDate, 'yyyy-MM-dd')} 开始 · {config.duration} 天
-						</p>
+				<div className="p-4 border-b border-slate-100 bg-slate-50 space-y-2.5">
+					<div className="flex justify-between items-center">
+						<div>
+							<h3 className="font-semibold text-slate-800">行程安排</h3>
+							<p className="text-xs text-slate-500">
+								{format(config.startDate, 'yyyy-MM-dd')} 开始 ·{' '}
+								{config.duration} 天
+							</p>
+						</div>
 						<button
 							onClick={() => setShowShare(true)}
-							className="p-1 hover:bg-slate-200 rounded-full transition-colors ml-auto"
+							className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors text-slate-600 flex items-center gap-1 text-xs font-medium"
 							title="分享行程"
 						>
-							<Share2 className="w-4 h-4 text-slate-600" />
+							<Share2 className="w-4 h-4" />
+							<span>分享</span>
 						</button>
 					</div>
+
+					{items.length > 0 && (
+						<div className="pt-0.5">
+							<button
+								onClick={() => {
+									if (window.confirm('确定要清空所有日程安排吗？')) {
+										clearItems();
+									}
+								}}
+								className="w-full py-1.5 px-3 text-xs text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-1.5 font-medium border border-red-200"
+								title="一键清空所有日程"
+							>
+								<Trash2 className="w-3.5 h-3.5" />
+								清空所有日程安排
+							</button>
+						</div>
+					)}
 				</div>
 				<div className="flex-1 overflow-y-auto p-4">
 					{items.length === 0 ? (
@@ -356,17 +398,30 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 							{items.map((item, index) => {
 								const isNewDay =
 									index === 0 ||
-									item.startTime.getDate() !== items[index - 1].startTime.getDate();
+									item.startTime.getDate() !==
+										items[index - 1].startTime.getDate();
+
+								// Calculate day index & route color
+								const dayNum = Math.max(
+									1,
+									Math.ceil(
+										(item.startTime.getTime() - config.startDate.getTime()) /
+											(1000 * 60 * 60 * 24),
+									) + 1,
+								);
+								const dayColor = DAY_COLORS[(dayNum - 1) % DAY_COLORS.length];
+
 								return (
-									<div key={item.id} className="relative pl-10 pb-6 last:pb-0 group">
+									<div
+										key={item.id}
+										className="relative pl-10 pb-6 last:pb-0 group"
+									>
 										{isNewDay && (
-											<div className="absolute -left-2 top-[-10px] bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full border border-blue-200 z-10">
-												第{' '}
-												{Math.ceil(
-													(item.startTime.getTime() - config.startDate.getTime()) /
-														(1000 * 60 * 60 * 24)
-												) + 1}{' '}
-												天
+											<div
+												className="absolute -left-2 top-[-10px] text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-xs z-10 border border-white/20"
+												style={{ backgroundColor: dayColor }}
+											>
+												第 {dayNum} 天
 											</div>
 										)}
 										{/* Dot */}
@@ -376,8 +431,8 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 												item.type === 'hotel'
 													? 'bg-indigo-600 ring-indigo-100'
 													: item.type === 'meal'
-													? 'bg-orange-500 ring-orange-100'
-													: 'bg-blue-600 ring-blue-100'
+														? 'bg-orange-500 ring-orange-100'
+														: 'bg-blue-600 ring-blue-100'
 											}`}
 										/>
 										<div
@@ -385,8 +440,8 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 												item.type === 'hotel'
 													? 'bg-indigo-50 border-indigo-100 group-hover:border-indigo-300'
 													: item.type === 'meal'
-													? 'bg-orange-50 border-orange-100 group-hover:border-orange-300'
-													: 'bg-slate-50 border-slate-200 group-hover:border-blue-300'
+														? 'bg-orange-50 border-orange-100 group-hover:border-orange-300'
+														: 'bg-slate-50 border-slate-200 group-hover:border-blue-300'
 											}`}
 										>
 											<div className="flex justify-between items-start">
@@ -395,8 +450,8 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 														item.type === 'hotel'
 															? 'text-indigo-900'
 															: item.type === 'meal'
-															? 'text-orange-900'
-															: 'text-slate-800'
+																? 'text-orange-900'
+																: 'text-slate-800'
 													}`}
 												>
 													{item.name}
@@ -439,11 +494,13 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 													{item.type === 'hotel'
 														? '休息/住宿'
 														: item.type === 'meal'
-														? '用餐'
-														: '游玩'}
+															? '用餐'
+															: '游玩'}
 													:{' '}
 													{Math.round(
-														(item.endTime.getTime() - item.startTime.getTime()) / 60000
+														(item.endTime.getTime() -
+															item.startTime.getTime()) /
+															60000,
 													)}
 													分钟
 												</span>
@@ -451,10 +508,13 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 													<button
 														onClick={() => {
 															const currentDuration =
-																(item.endTime.getTime() - item.startTime.getTime()) / 60000;
+																(item.endTime.getTime() -
+																	item.startTime.getTime()) /
+																60000;
 															if (currentDuration > 30) {
 																const newEndTime = new Date(
-																	item.startTime.getTime() + (currentDuration - 30) * 60000
+																	item.startTime.getTime() +
+																		(currentDuration - 30) * 60000,
 																);
 																updateItem(item.id, { endTime: newEndTime });
 															}
@@ -467,9 +527,12 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 													<button
 														onClick={() => {
 															const currentDuration =
-																(item.endTime.getTime() - item.startTime.getTime()) / 60000;
+																(item.endTime.getTime() -
+																	item.startTime.getTime()) /
+																60000;
 															const newEndTime = new Date(
-																item.startTime.getTime() + (currentDuration + 30) * 60000
+																item.startTime.getTime() +
+																	(currentDuration + 30) * 60000,
 															);
 															updateItem(item.id, { endTime: newEndTime });
 														}}
@@ -482,7 +545,9 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 												<div className="ml-auto">
 													<button
 														onClick={() =>
-															updateItem(item.id, { forceDayStart: !item.forceDayStart })
+															updateItem(item.id, {
+																forceDayStart: !item.forceDayStart,
+															})
 														}
 														className={`p-1 rounded text-xs flex items-center gap-1 ${
 															item.forceDayStart
@@ -501,7 +566,10 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 											<div className="mt-2 pt-2 border-t border-slate-100 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
 												<button
 													onClick={() => {
-														setSearchCenter({ location: item.location, name: item.name });
+														setSearchCenter({
+															location: item.location,
+															name: item.name,
+														});
 														setSearchCategory('restaurant');
 													}}
 													className="flex-1 py-1 bg-orange-50 text-orange-600 text-xs rounded hover:bg-orange-100 flex items-center justify-center gap-1"
@@ -511,7 +579,10 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 												</button>
 												<button
 													onClick={() => {
-														setSearchCenter({ location: item.location, name: item.name });
+														setSearchCenter({
+															location: item.location,
+															name: item.name,
+														});
 														setSearchCategory('hotel');
 													}}
 													className="flex-1 py-1 bg-indigo-50 text-indigo-600 text-xs rounded hover:bg-indigo-100 flex items-center justify-center gap-1"
@@ -524,14 +595,16 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
 										{/* Travel time indicator if next item exists and is on the same day */}
 										{index < items.length - 1 &&
-											items[index + 1].startTime.getDate() === item.endTime.getDate() && (
+											items[index + 1].startTime.getDate() ===
+												item.endTime.getDate() && (
 												<div className="mt-2 mb-2 text-xs text-slate-500 flex items-center gap-1 pl-1">
 													<div className="w-0.5 h-4 bg-slate-200 mx-3"></div>
 													<span className="bg-slate-100 px-2 py-0.5 rounded-full">
 														🚗 路程约{' '}
 														{Math.round(
-															(items[index + 1].startTime.getTime() - item.endTime.getTime()) /
-																60000
+															(items[index + 1].startTime.getTime() -
+																item.endTime.getTime()) /
+																60000,
 														)}{' '}
 														分钟
 													</span>
@@ -547,56 +620,11 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
 			{/* Share Modal */}
 			{showShare && (
-				<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-					<div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full">
-						<h3 className="text-lg font-bold text-slate-800 mb-4">分享行程</h3>
-						<div className="flex justify-center mb-4">
-							<QRCodeCanvas
-								value={`https://uri.amap.com/navigation?to=${
-									items.length > 0
-										? `${items[items.length - 1].location[0]},${
-												items[items.length - 1].location[1]
-										  },${items[items.length - 1].name}`
-										: ''
-								}&via=${items
-									.slice(0, Math.min(items.length - 1, 3))
-									.map((item) => `${item.location[0]},${item.location[1]},${item.name}`)
-									.join('|')}&mode=car&callnative=1`}
-								size={200}
-							/>
-						</div>
-						<p className="text-sm text-slate-500 text-center mb-4">
-							使用高德地图 App 扫码查看路线
-							<br />
-							(仅包含前3个途经点)
-						</p>
-						<div className="flex gap-2">
-							<button
-								onClick={() => setShowShare(false)}
-								className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200"
-							>
-								关闭
-							</button>
-							<a
-								href={`https://uri.amap.com/navigation?to=${
-									items.length > 0
-										? `${items[items.length - 1].location[0]},${
-												items[items.length - 1].location[1]
-										  },${items[items.length - 1].name}`
-										: ''
-								}&via=${items
-									.slice(0, Math.min(items.length - 1, 3))
-									.map((item) => `${item.location[0]},${item.location[1]},${item.name}`)
-									.join('|')}&mode=car&callnative=1`}
-								target="_blank"
-								rel="noreferrer"
-								className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center"
-							>
-								打开高德
-							</a>
-						</div>
-					</div>
-				</div>
+				<ShareModal
+					config={config}
+					items={items}
+					onClose={() => setShowShare(false)}
+				/>
 			)}
 		</div>
 	);

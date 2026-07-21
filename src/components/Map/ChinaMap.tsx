@@ -11,7 +11,7 @@ declare global {
 }
 
 // Define colors for different days
-const DAY_COLORS = [
+export const DAY_COLORS = [
 	'#2563eb', // Blue
 	'#16a34a', // Green
 	'#d97706', // Orange
