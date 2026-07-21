@@ -218,7 +218,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
 	return (
 		<div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-			<div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+			<div className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-200">
 				{/* Header */}
 				<div className="bg-linear-to-r from-blue-600 to-indigo-600 p-5 text-white flex justify-between items-center print:hidden">
 					<div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 				{/* Scrollable Content */}
 				<div className="flex-1 overflow-y-auto p-6 space-y-6">
 					{/* Travel Meta */}
-					<div className="grid grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+					<div className="grid grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
 						<div className="flex items-center gap-2 text-slate-700">
 							<Calendar className="w-4 h-4 text-blue-600" />
 							<div>

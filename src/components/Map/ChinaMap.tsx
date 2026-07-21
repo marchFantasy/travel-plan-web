@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import AMapLoader from '@amap/amap-jsapi-loader';
 import { useItineraryStore } from '../../store/useItineraryStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { getLogicalDate } from '../../utils/dateUtils';
 import { format } from 'date-fns';
 import type { Attraction } from '../../types';
@@ -36,6 +37,7 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 	onSelectPoi,
 }) => {
 	const { items, config } = useItineraryStore();
+	const { theme } = useSettingsStore();
 	const mapRef = useRef<any>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const markersRef = useRef<any[]>([]);
@@ -57,6 +59,7 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 					viewMode: '3D',
 					zoom: 4,
 					center: [104.1954, 35.8617], // Center of China
+					mapStyle: theme === 'dark' ? 'amap://styles/dark' : 'amap://styles/normal',
 				});
 
 				mapRef.current = mapInstance;
@@ -75,6 +78,15 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 			}
 		};
 	}, []);
+
+	// Update map style when theme changes
+	useEffect(() => {
+		if (mapRef.current && window.AMap) {
+			mapRef.current.setMapStyle(
+				theme === 'dark' ? 'amap://styles/dark' : 'amap://styles/normal'
+			);
+		}
+	}, [theme]);
 
 	// Pan map center when searchCenter changes
 	useEffect(() => {
@@ -184,10 +196,10 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 				title: item.name,
 				content: `
 					<div class="flex flex-col items-center">
-						<div class="bg-white px-2 py-1 rounded shadow text-xs font-bold mb-1 whitespace-nowrap border-l-4" style="border-left-color: ${color}">
+						<div class="px-2.5 py-1 rounded-md shadow-md text-xs font-extrabold mb-1 whitespace-nowrap border-l-4" style="background-color: #ffffff; color: #0f172a; border-left-color: ${color}; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
 							${item.name}
 						</div>
-						<div class="w-3 h-3 rounded-full border-2 border-white shadow" style="background-color: ${color}"></div>
+						<div class="w-3 h-3 rounded-full border-2 border-white shadow-md" style="background-color: ${color}"></div>
 					</div>
 				`,
 				offset: new AMap.Pixel(-0, -20),
@@ -197,15 +209,15 @@ export const ChinaMap: React.FC<ChinaMapProps> = ({
 			marker.on('click', () => {
 				const infoWindow = new AMap.InfoWindow({
 					content: `
-            <div class="p-2">
-              <h4 class="font-bold">${item.name}</h4>
-              <p class="text-xs text-gray-500">
+            <div class="p-2.5 text-left" style="color: #0f172a;">
+              <h4 class="font-extrabold text-sm" style="color: #0f172a; margin-bottom: 2px;">${item.name}</h4>
+              <p class="text-xs" style="color: #475569;">
                 ${new Date(item.startTime).toLocaleTimeString([], {
 																	hour: '2-digit',
 																	minute: '2-digit',
 																})}
               </p>
-			  <p class="text-xs text-gray-400 mt-1">Day ${dayIndex + 1}</p>
+			  <p class="text-xs font-bold" style="color: #2563eb; margin-top: 4px;">第 ${dayIndex + 1} 天行程</p>
             </div>
           `,
 					offset: new AMap.Pixel(0, -30),

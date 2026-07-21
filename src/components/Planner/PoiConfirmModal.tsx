@@ -30,7 +30,7 @@ export const PoiConfirmModal: React.FC<PoiConfirmModalProps> = ({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200">
-			<div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200">
+			<div className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
 				{/* Image Header */}
 				<div className="relative h-48 bg-slate-100 overflow-hidden">
 					<img

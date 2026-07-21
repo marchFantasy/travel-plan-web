@@ -8,7 +8,7 @@ const SPEEDS = {
 };
 
 // Haversine formula to calculate distance in km
-function calculateDistance(
+export function calculateDistance(
 	loc1: [number, number],
 	loc2: [number, number]
 ): number {
@@ -23,6 +23,17 @@ function calculateDistance(
 			Math.sin(dLon / 2);
 	const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 	return R * c;
+}
+
+export function calculateTravelTime(
+	loc1: [number, number],
+	loc2: [number, number],
+	transportType: TransportType
+): number {
+	const distance = calculateDistance(loc1, loc2);
+	const speed = SPEEDS[transportType] || SPEEDS.public;
+	const minutes = Math.ceil((distance / speed) * 60);
+	return Math.max(3, minutes); // Minimum 3 mins
 }
 
 function deg2rad(deg: number): number {
@@ -91,12 +102,15 @@ export function recalculateItinerary(
 				currentTime = nextDay;
 			}
 
+			// Compute original duration BEFORE mutating startTime
+			const prevStart = new Date(item.startTime).getTime();
+			const prevEnd = new Date(item.endTime).getTime();
+			const originalDuration = (prevEnd - prevStart) / (1000 * 60);
+
+			const defaultDuration = item.type === 'meal' ? 60 : (item.suggestedDuration || 120);
+			const duration = (originalDuration > 0 && !isNaN(originalDuration)) ? originalDuration : defaultDuration;
+
 			item.startTime = new Date(currentTime);
-
-			const originalDuration =
-				(new Date(item.endTime).getTime() - new Date(item.startTime).getTime()) / (1000 * 60);
-			const duration = item.type === 'meal' ? 60 : (originalDuration > 0 ? originalDuration : 120);
-
 			item.endTime = addMinutes(item.startTime, duration);
 			currentTime = new Date(item.endTime);
 		}
