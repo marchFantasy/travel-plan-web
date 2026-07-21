@@ -11,12 +11,12 @@ import {
 	Clock,
 	Car,
 	Bed,
-	Utensils,
 	ExternalLink,
 	Sparkles,
 } from 'lucide-react';
 import type { ItineraryItem, TravelConfig } from '../../types';
 import { DAY_COLORS } from '../Map/ChinaMap';
+import { getLogicalDate } from '../../utils/dateUtils';
 
 interface ShareModalProps {
 	config: TravelConfig;
@@ -31,10 +31,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 }) => {
 	const [copied, setCopied] = useState(false);
 
-	// Group items by day
+	// Group items by logical day
 	const dayGroups: { [key: string]: ItineraryItem[] } = {};
 	items.forEach((item) => {
-		const dateStr = format(new Date(item.startTime), 'yyyy-MM-dd');
+		const dateStr = format(getLogicalDate(item), 'yyyy-MM-dd');
 		if (!dayGroups[dateStr]) {
 			dayGroups[dateStr] = [];
 		}
@@ -52,7 +52,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 		
 		// Take up to 10 points for static map markers to prevent URL length limits
 		const markerPoints = items.slice(0, 10).map((item, idx) => {
-			const dateStr = format(new Date(item.startTime), 'yyyy-MM-dd');
+			const dateStr = format(getLogicalDate(item), 'yyyy-MM-dd');
 			const dayIdx = Math.max(0, sortedDays.indexOf(dateStr));
 			const color = DAY_COLORS[dayIdx % DAY_COLORS.length].replace('#', '0x');
 			return `mid,${color},${idx + 1}:${item.location[0].toFixed(5)},${item.location[1].toFixed(5)}`;
@@ -88,7 +88,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
 		sortedDays.forEach((date, index) => {
 			const dayItems = dayGroups[date];
-			const dayColor = DAY_COLORS[index % DAY_COLORS.length];
 			text += `📅 【第 ${index + 1} 天】 ${date}\n`;
 
 			dayItems.forEach((item) => {
@@ -121,7 +120,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 	// Handle Downloading Independent HTML File
 	const handleDownloadHtml = () => {
 		const staticMap = getStaticMapUrl();
-		const textContent = generateTextPlan();
 
 		let dayCardsHtml = '';
 		sortedDays.forEach((date, index) => {

@@ -35,7 +35,7 @@ export function recalculateItinerary(
 	transportType: TransportType
 ): ItineraryItem[] {
 	let currentTime = new Date(startDate);
-	// Set start time to 9:00 AM on the first day if it's just a date
+	// Set start time to 9:00 AM on the first day
 	currentTime.setHours(9, 0, 0, 0);
 
 	const updatedItems: ItineraryItem[] = [];
@@ -44,66 +44,62 @@ export function recalculateItinerary(
 		const item = { ...items[i] };
 		const prevItem = i > 0 ? updatedItems[i - 1] : null;
 
-		// Calculate travel time from previous location
-		let travelTime = 0;
-		if (prevItem) {
-			const distance = calculateDistance(prevItem.location, item.location);
-			const speed = SPEEDS[transportType];
-			travelTime = Math.ceil((distance / speed) * 60); // minutes
-		}
+		if (item.type === 'hotel') {
+			// Hotel always represents accommodation for the current day's night.
+			// If previous item finished early (e.g. before 20:00), default check-in is set to 20:00.
+			let travelTime = 0;
+			if (prevItem && prevItem.type !== 'hotel') {
+				const distance = calculateDistance(prevItem.location, item.location);
+				const speed = SPEEDS[transportType];
+				travelTime = Math.ceil((distance / speed) * 60);
+			}
 
-		// Add travel time buffer
-		if (travelTime > 0) {
-			currentTime = addMinutes(currentTime, travelTime);
-		}
+			let checkInTime = addMinutes(currentTime, travelTime);
+			if (checkInTime.getHours() < 20 && checkInTime.getHours() >= 6) {
+				// Default evening check-in time (20:00)
+				checkInTime.setHours(20, 0, 0, 0);
+			}
 
-		// Handle explicit day break or auto-wrap if too late (e.g. after 22:00)
-		if (item.forceDayStart || currentTime.getHours() >= 22) {
-			// Move to next day 9:00 AM
-			// If it's already past midnight of the previous day logic, we just ensure it's 9am of the "current" day if we wrapped?
-			// Simpler: Just add 1 day to the *date* part of currentTime and set to 9am.
-			// But wait, if we just finished at 23:00, we want tomorrow 9:00.
-			// If we finished at 10:00 but forceDayStart is true, we want tomorrow 9:00.
+			item.startTime = new Date(checkInTime);
 
-			const nextDay = new Date(currentTime);
-			if (item.forceDayStart || currentTime.getHours() >= 22) {
+			// Hotel checkout is 09:00 AM of the next morning
+			const checkOutTime = new Date(item.startTime);
+			checkOutTime.setDate(checkOutTime.getDate() + 1);
+			checkOutTime.setHours(9, 0, 0, 0);
+			item.endTime = checkOutTime;
+
+			// Next day's schedule begins at 09:00 AM next morning after checkout
+			currentTime = new Date(item.endTime);
+		} else {
+			// Non-hotel items (attractions / meals)
+			let travelTime = 0;
+			if (prevItem) {
+				const distance = calculateDistance(prevItem.location, item.location);
+				const speed = SPEEDS[transportType];
+				travelTime = Math.ceil((distance / speed) * 60);
+			}
+
+			if (travelTime > 0) {
+				currentTime = addMinutes(currentTime, travelTime);
+			}
+
+			// Wrap to next day 9:00 AM if forceDayStart is set or time is late night (>= 21:00)
+			if (item.forceDayStart || currentTime.getHours() >= 21) {
+				const nextDay = new Date(currentTime);
 				nextDay.setDate(nextDay.getDate() + 1);
 				nextDay.setHours(9, 0, 0, 0);
 				currentTime = nextDay;
 			}
-		}
 
-		// Set start time
-		item.startTime = new Date(currentTime);
+			item.startTime = new Date(currentTime);
 
-		// Calculate duration based on item type
-		// For attractions, duration is usually fixed or suggested
-		// For now, we assume the item already has a duration implicitly via endTime - startTime
-		// But in our model, we should probably store 'duration' in the item or look it up.
-		// Let's assume the item passed in might have a 'duration' property or we calculate it.
-		// Since ItineraryItem doesn't have duration, we rely on the difference or default.
-		// Wait, the interface defined earlier has startTime and endTime.
-		// We should probably add 'duration' to ItineraryItem to make this easier,
-		// or we assume the difference between original start/end is the intended duration.
-
-		let duration = 0;
-		if (item.type === 'hotel') {
-			// Hotel ends at 9:00 AM next day (or same day if checked in early morning)
-			const targetEnd = new Date(item.startTime);
-			targetEnd.setHours(9, 0, 0, 0);
-			if (targetEnd <= item.startTime) {
-				targetEnd.setDate(targetEnd.getDate() + 1);
-			}
-			duration = (targetEnd.getTime() - item.startTime.getTime()) / (1000 * 60);
-		} else {
 			const originalDuration =
-				(item.endTime.getTime() - item.startTime.getTime()) / (1000 * 60);
-			duration = originalDuration > 0 ? originalDuration : 120; // Default 2 hours
-		}
+				(new Date(item.endTime).getTime() - new Date(item.startTime).getTime()) / (1000 * 60);
+			const duration = originalDuration > 0 ? originalDuration : 120; // Default 2 hours
 
-		// Set end time
-		item.endTime = addMinutes(item.startTime, duration);
-		currentTime = item.endTime;
+			item.endTime = addMinutes(item.startTime, duration);
+			currentTime = new Date(item.endTime);
+		}
 
 		updatedItems.push(item);
 	}

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import AMapLoader from '@amap/amap-jsapi-loader';
 import { useItineraryStore } from '../../store/useItineraryStore';
+import { getLogicalDate } from '../../utils/dateUtils';
+import { format } from 'date-fns';
 
 // Define window.AMap type
 declare global {
@@ -81,10 +83,10 @@ export const ChinaMap: React.FC = () => {
 		polylineRef.current = [];
 		markersRef.current = [];
 
-		// Group items by day
+		// Group items by logical day
 		const dayGroups: { [key: string]: typeof items } = {};
 		items.forEach((item) => {
-			const dateStr = new Date(item.startTime).toDateString();
+			const dateStr = format(getLogicalDate(item), 'yyyy-MM-dd');
 			if (!dayGroups[dateStr]) {
 				dayGroups[dateStr] = [];
 			}
@@ -100,7 +102,7 @@ export const ChinaMap: React.FC = () => {
 			const position = new AMap.LngLat(item.location[0], item.location[1]);
 
 			// Find which day index this item belongs to for color
-			const dateStr = new Date(item.startTime).toDateString();
+			const dateStr = format(getLogicalDate(item), 'yyyy-MM-dd');
 			const dayIndex = days.indexOf(dateStr);
 			const color = DAY_COLORS[dayIndex % DAY_COLORS.length];
 

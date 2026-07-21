@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useItineraryStore } from '../../store/useItineraryStore';
 import { MOCK_CITIES } from '../../data/mockData';
 import { ChinaMap, DAY_COLORS } from '../Map/ChinaMap';
+import { getLogicalDate, getDayNumber } from '../../utils/dateUtils';
 import {
 	Plus,
 	Star,
@@ -18,11 +19,15 @@ import {
 	Utensils,
 	MapPin,
 	Share2,
+	ChevronLeft,
+	ChevronRight,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import AMapLoader from '@amap/amap-jsapi-loader';
 import type { Attraction } from '../../types';
 import { ShareModal } from './ShareModal';
+
+const PAGE_SIZE = 10;
 
 export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 	const {
@@ -36,6 +41,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 	} = useItineraryStore();
 	const [attractions, setAttractions] = useState<Attraction[]>([]);
 	const [loading, setLoading] = useState(false);
+	const [currentPage, setCurrentPage] = useState(1);
 	const [searchKeyword, setSearchKeyword] = useState('');
 	const [searchCategory, setSearchCategory] = useState<
 		'attraction' | 'hotel' | 'restaurant'
@@ -120,6 +126,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 				}
 			}
 			setAttractions(allAttractions);
+			setCurrentPage(1);
 		} catch (e) {
 			console.error('Failed to fetch attractions', e);
 		} finally {
@@ -187,6 +194,12 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 		doSearch();
 	}, [config.selectedCityIds, searchCategory, searchCenter]);
 
+	const totalPages = Math.max(1, Math.ceil(attractions.length / PAGE_SIZE));
+	const paginatedAttractions = attractions.slice(
+		(currentPage - 1) * PAGE_SIZE,
+		currentPage * PAGE_SIZE,
+	);
+
 	return (
 		<div className="grid grid-cols-12 gap-6 h-[calc(100vh-8rem)]">
 			{/* Left Panel: Attraction Library */}
@@ -205,7 +218,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 							<p className="text-xs text-slate-500">
 								{loading
 									? '正在加载实时数据...'
-									: `找到 ${attractions.length} 个景点`}
+									: `找到 ${attractions.length} 个景点 (共 ${totalPages} 页)`}
 							</p>
 						</div>
 					</div>
@@ -293,8 +306,12 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 						<div className="flex justify-center py-10">
 							<Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
 						</div>
+					) : paginatedAttractions.length === 0 ? (
+						<div className="text-center py-10 text-slate-400 text-sm">
+							未找到相关地点
+						</div>
 					) : (
-						attractions.map((attraction) => (
+						paginatedAttractions.map((attraction) => (
 							<div
 								key={attraction.id}
 								className="group bg-white border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
@@ -339,6 +356,36 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 						))
 					)}
 				</div>
+
+				{/* Pagination Footer */}
+				{!loading && attractions.length > 0 && (
+					<div className="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
+						<span className="truncate">
+							共 {attractions.length} 条 | 每页 10 条
+						</span>
+						<div className="flex items-center gap-1.5 shrink-0">
+							<button
+								onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+								disabled={currentPage === 1}
+								className="p-1 rounded bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition-colors"
+								title="上一页"
+							>
+								<ChevronLeft className="w-4 h-4 text-slate-700" />
+							</button>
+							<span className="font-semibold text-slate-700 px-1">
+								{currentPage} / {totalPages}
+							</span>
+							<button
+								onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+								disabled={currentPage === totalPages}
+								className="p-1 rounded bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition-colors"
+								title="下一页"
+							>
+								<ChevronRight className="w-4 h-4 text-slate-700" />
+							</button>
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* Center Panel: Map */}
@@ -396,19 +443,14 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 							<div className="absolute left-4 top-2 bottom-2 w-0.5 bg-slate-200" />
 
 							{items.map((item, index) => {
+								const itemDate = getLogicalDate(item);
+								const prevItemDate =
+									index > 0 ? getLogicalDate(items[index - 1]) : null;
 								const isNewDay =
-									index === 0 ||
-									item.startTime.getDate() !==
-										items[index - 1].startTime.getDate();
+									index === 0 || itemDate.getTime() !== prevItemDate?.getTime();
 
 								// Calculate day index & route color
-								const dayNum = Math.max(
-									1,
-									Math.ceil(
-										(item.startTime.getTime() - config.startDate.getTime()) /
-											(1000 * 60 * 60 * 24),
-									) + 1,
-								);
+								const dayNum = getDayNumber(itemDate, config.startDate);
 								const dayColor = DAY_COLORS[(dayNum - 1) % DAY_COLORS.length];
 
 								return (
