@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import AMapLoader from '@amap/amap-jsapi-loader';
 import type { Attraction } from '../../types';
 import { ShareModal } from './ShareModal';
+import { PoiConfirmModal } from './PoiConfirmModal';
 
 const PAGE_SIZE = 10;
 
@@ -51,6 +52,7 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 		name: string;
 	} | null>(null);
 	const [showShare, setShowShare] = useState(false);
+	const [confirmingPoi, setConfirmingPoi] = useState<Attraction | null>(null);
 
 	const doSearch = async (keyword?: string) => {
 		if (config.selectedCityIds.length === 0) return;
@@ -158,12 +160,12 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
 				// Determine default duration
 				let duration = 90;
-				if (searchCategory === 'attraction') {
-					duration = level === '5A' ? 180 : level === '4A' ? 120 : 90;
-				} else if (searchCategory === 'restaurant') {
+				if (searchCategory === 'restaurant' || poi.type?.includes('餐饮') || poi.type?.includes('美食')) {
 					duration = 60;
-				} else if (searchCategory === 'hotel') {
+				} else if (searchCategory === 'hotel' || poi.type?.includes('住宿') || poi.type?.includes('酒店')) {
 					duration = 0; // Usually just a stop or check-in
+				} else if (searchCategory === 'attraction') {
+					duration = level === '5A' ? 180 : level === '4A' ? 120 : 90;
 				}
 
 				allAttractions.push({
@@ -314,7 +316,8 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 						paginatedAttractions.map((attraction) => (
 							<div
 								key={attraction.id}
-								className="group bg-white border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+								onClick={() => setConfirmingPoi(attraction)}
+								className="group bg-white border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
 							>
 								<div className="h-32 overflow-hidden relative">
 									<img
@@ -345,8 +348,12 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 											</div>
 										</div>
 										<button
-											onClick={() => addItem(attraction)}
+											onClick={(e) => {
+												e.stopPropagation();
+												setConfirmingPoi(attraction);
+											}}
 											className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-600 hover:text-white transition-colors"
+											title="预览并添加到行程"
 										>
 											<Plus className="w-4 h-4" />
 										</button>
@@ -390,7 +397,11 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
 			{/* Center Panel: Map */}
 			<div className="col-span-6 bg-slate-200 rounded-xl border border-slate-300 relative overflow-hidden shadow-inner">
-				<ChinaMap />
+				<ChinaMap
+					searchPois={attractions}
+					searchCenter={searchCenter}
+					onSelectPoi={(poi) => setConfirmingPoi(poi)}
+				/>
 			</div>
 
 			{/* Right Panel: Timeline */}
@@ -666,6 +677,20 @@ export const Dashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 					config={config}
 					items={items}
 					onClose={() => setShowShare(false)}
+				/>
+			)}
+
+			{/* POI Secondary Confirmation Modal */}
+			{confirmingPoi && (
+				<PoiConfirmModal
+					poi={confirmingPoi}
+					onClose={() => setConfirmingPoi(null)}
+					onConfirm={(poi) => {
+						addItem(poi);
+						// Clear search center and unselected candidate markers on map after confirmation
+						setSearchCenter(null);
+						setSearchCategory('attraction');
+					}}
 				/>
 			)}
 		</div>

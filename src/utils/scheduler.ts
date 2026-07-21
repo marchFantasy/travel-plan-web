@@ -95,7 +95,7 @@ export function recalculateItinerary(
 
 			const originalDuration =
 				(new Date(item.endTime).getTime() - new Date(item.startTime).getTime()) / (1000 * 60);
-			const duration = originalDuration > 0 ? originalDuration : 120; // Default 2 hours
+			const duration = item.type === 'meal' ? 60 : (originalDuration > 0 ? originalDuration : 120);
 
 			item.endTime = addMinutes(item.startTime, duration);
 			currentTime = new Date(item.endTime);

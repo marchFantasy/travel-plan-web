@@ -62,8 +62,9 @@ export const useItineraryStore = create<ItineraryState>((set, get) => ({
 			notes: '',
 		};
 
-		// Set initial duration based on suggestion
-		const duration = attraction.suggestedDuration || 120;
+		// Dining (restaurant/meal) is strictly 60 mins (1 hour), attractions default to suggested or 120 mins
+		const isMeal = attraction.category === 'restaurant' || newItem.type === 'meal';
+		const duration = isMeal ? 60 : (attraction.suggestedDuration || 120);
 		newItem.endTime = new Date(newItem.startTime.getTime() + duration * 60000);
 
 		const newItems = [...items, newItem];

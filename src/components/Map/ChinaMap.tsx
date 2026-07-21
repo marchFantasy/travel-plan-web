@@ -3,6 +3,7 @@ import AMapLoader from '@amap/amap-jsapi-loader';
 import { useItineraryStore } from '../../store/useItineraryStore';
 import { getLogicalDate } from '../../utils/dateUtils';
 import { format } from 'date-fns';
+import type { Attraction } from '../../types';
 
 // Define window.AMap type
 declare global {
@@ -23,11 +24,22 @@ export const DAY_COLORS = [
 	'#db2777', // Pink
 ];
 
-export const ChinaMap: React.FC = () => {
+interface ChinaMapProps {
+	searchPois?: Attraction[];
+	searchCenter?: { location: [number, number]; name: string } | null;
+	onSelectPoi?: (poi: Attraction) => void;
+}
+
+export const ChinaMap: React.FC<ChinaMapProps> = ({
+	searchPois = [],
+	searchCenter = null,
+	onSelectPoi,
+}) => {
 	const { items, config } = useItineraryStore();
 	const mapRef = useRef<any>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const markersRef = useRef<any[]>([]);
+	const poiMarkersRef = useRef<any[]>([]);
 	const polylineRef = useRef<any>(null);
 
 	useEffect(() => {
@@ -63,6 +75,67 @@ export const ChinaMap: React.FC = () => {
 			}
 		};
 	}, []);
+
+	// Pan map center when searchCenter changes
+	useEffect(() => {
+		if (!mapRef.current || !searchCenter || !window.AMap) return;
+		mapRef.current.setZoomAndCenter(13, searchCenter.location);
+	}, [searchCenter]);
+
+	// Update candidate search POI markers when searchPois change
+	useEffect(() => {
+		if (!mapRef.current || !window.AMap) return;
+		const AMap = window.AMap;
+		const map = mapRef.current;
+
+		// Clear existing candidate POI markers
+		map.remove(poiMarkersRef.current);
+		poiMarkersRef.current = [];
+
+		if (!searchPois || searchPois.length === 0) return;
+
+		// Filter out POIs already added to itinerary
+		const addedIds = new Set(items.map((i) => i.referenceId));
+		const candidatePois = searchPois.filter((p) => !addedIds.has(p.id));
+
+		candidatePois.forEach((poi) => {
+			const position = new AMap.LngLat(poi.location[0], poi.location[1]);
+			const isHotel = poi.category === 'hotel';
+			const isRestaurant = poi.category === 'restaurant';
+			const iconEmoji = isHotel ? '🏨' : isRestaurant ? '🍽️' : '📍';
+			const badgeBg = isHotel
+				? 'bg-indigo-600 text-white'
+				: isRestaurant
+				? 'bg-orange-500 text-white'
+				: 'bg-blue-600 text-white';
+
+			const marker = new AMap.Marker({
+				position: position,
+				title: `${poi.name} (点击预览添加)`,
+				content: `
+					<div class="flex flex-col items-center group cursor-pointer hover:scale-110 transition-transform">
+						<div class="px-2 py-1 rounded-full shadow-md ${badgeBg} text-xs font-bold flex items-center gap-1 border border-white/80 whitespace-nowrap">
+							<span>${iconEmoji}</span>
+							<span>${poi.name}</span>
+						</div>
+						<div class="w-2 h-2 rounded-full ${badgeBg} border border-white shadow-xs"></div>
+					</div>
+				`,
+				offset: new AMap.Pixel(0, -15),
+				zIndex: 80,
+			});
+
+			marker.on('click', () => {
+				if (onSelectPoi) {
+					onSelectPoi(poi);
+				}
+			});
+
+			poiMarkersRef.current.push(marker);
+		});
+
+		map.add(poiMarkersRef.current);
+	}, [searchPois, items, onSelectPoi]);
 
 	// Update markers and route when items change
 	useEffect(() => {
@@ -237,10 +310,10 @@ export const ChinaMap: React.FC = () => {
 		drawDayRoutes();
 
 		// Fit view
-		if (markersRef.current.length > 0) {
+		if (markersRef.current.length > 0 && !searchCenter) {
 			map.setFitView(markersRef.current, false, [50, 50, 50, 50]);
 		}
-	}, [items, config.transport]);
+	}, [items, config.transport, searchCenter]);
 
 	return (
 		<div
